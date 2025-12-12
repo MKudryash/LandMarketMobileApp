@@ -247,7 +247,70 @@ class AdvertisementViewModel : ViewModel() {
             SellerInfo()
         }
     }
+    fun getAdvertisementById(advertisementId: String) {
+        _resultState.value = ResultState.Loading
 
+        viewModelScope.launch {
+            try {
+                // Увеличиваем счетчик просмотров
+
+
+                // Получаем объявление
+                val advertisement = supabase.postgrest
+                    .from("advertisements")
+                    .select {
+                        filter { eq("id", advertisementId) }
+                        filter { eq("status", "active") }
+                    }
+                    .decodeSingle<Advertisement>()
+
+                // Получаем дополнительные данные (пользователь, локация и т.д.)
+                val sellerInfo = getSellerInfo(advertisement.userId)
+                val locationInfo = getLocationInfo(advertisement.villageId, advertisement.regionId)
+                val images = getAdvertisementImages(advertisementId)
+
+                // Преобразуем в UI состояние
+                val adState = AdvertisementState(
+                    id = advertisement.id ?: "",
+                    title = advertisement.title ?: "",
+                    description = advertisement.description ?: "",
+                    price = advertisement.price?.toInt() ?: 0,
+                    area = advertisement.area?.toInt() ?: 0,
+                    location = locationInfo,
+                    coordinates = null, // Можно получить из таблицы locations
+                    imageUrls = images,
+                    isFavorite = checkIfFavorite(advertisementId),
+                    datePosted =advertisement.createdAt.toString(),
+                    sellerName = sellerInfo.name,
+                    sellerRating = sellerInfo.rating,
+                    sellerReviewsCount = sellerInfo.reviewsCount,
+                    sellerSince = sellerInfo.since,
+                    hasElectricity = advertisement.hasElectricity ?: false,
+                    hasWater = advertisement.hasWater ?: false,
+                    hasRoad = advertisement.hasRoad ?: false,
+                    hasGas = advertisement.hasGas ?: false,
+                    hasInternet = advertisement.hasInternet ?: false,
+                    soilType = advertisement.soilType ?: "Чернозем",
+                    relief = advertisement.reliefType ?: "Ровный",
+                    distanceToCity = getDistanceToCity(advertisement.villageId),
+                    cadastralNumber = advertisement.cadastralNumber ?: "",
+                    purpose = advertisement.purpose ?: "ИЖС",
+                    documents = advertisement.documents ?: emptyList(),
+                    viewsCount = advertisement.viewsCount ?: 0,
+                    phoneNumber = advertisement.contactPhone ?: "",
+                    features = extractFeatures(advertisement),
+                    additionalInfo = buildAdditionalInfo(advertisement)
+                )
+
+                _advertisementState.value = adState
+                _resultState.value = ResultState.Success("Объявление загружено")
+                incrementViewsCount(advertisementId)
+            } catch (e: Exception) {
+                Log.e("getAdvertisement", "Error loading advertisement", e)
+                _resultState.value = ResultState.Error(e.message ?: "Ошибка загрузки")
+            }
+        }
+    }
     private suspend fun getLocationInfo(villageId: String?, regionId: String?): String {
         // Здесь нужно получить названия из таблиц villages и regions
         // Возвращаем заглушку
@@ -264,7 +327,6 @@ class AdvertisementViewModel : ViewModel() {
                     filter { eq("user_id", currentUser.id) }
                     filter { eq("advertisement_id", advertisementId) }
                 }.decodeList<Favorites>()
-                Log.d("favorite", result.size.toString())
             result.size > 0
         } catch (e: Exception) {
             false
@@ -272,34 +334,46 @@ class AdvertisementViewModel : ViewModel() {
     }
 
     private suspend fun incrementViewsCount(advertisementId: String) {
-        try {
-           /* supabase.postgrest
-                .from("advertisements")
-                .update(
-                    mapOf(
-                        "views_count" to supabase.postgrest.rpc(
-                            "increment_views",
-                            mapOf("ad_id" to advertisementId)
+        val currentState = _advertisementState.value
+        if (currentState != null) {
+            try {
+                // Увеличиваем на 1 перед отправкой
+                val newViewsCount = currentState.viewsCount + 1
+
+                supabase.postgrest.from("advertisements")
+                    .update(
+                        mapOf(
+                            "views_count" to newViewsCount  // Передаем новое значение
                         )
-                    )
-                ) {
-                    filter { eq("id", advertisementId) }
-                }*/
-        } catch (e: Exception) {
-            // Игнорируем ошибку увеличения счетчика
+                    ) {
+                        filter { eq("id", advertisementId) }
+                    }
+
+                Log.d("UPDATE", "Old: ${currentState.viewsCount}, New: $newViewsCount")
+                Log.d("UPDATE", "Ad ID: $advertisementId")
+
+
+                _advertisementState.value = currentState.copy(viewsCount = newViewsCount)
+
+            } catch (e: Exception) {
+                Log.e("UPDATE", e.message ?: "Unknown error", e)
+            }
+        } else {
+            Log.e("UPDATE", "Advertisement state is null")
         }
     }
 
-   /* private fun formatDate(dateString: String?): String {
-        return try {
-            dateString?.let {
-                val dateTime = LocalDateTime.parse(it, isoFormatter)
-                dateTime.format(dateFormatter)
-            } ?: ""
-        } catch (e: Exception) {
-            ""
-        }
-    }*/
+
+    /* private fun formatDate(dateString: String?): String {
+         return try {
+             dateString?.let {
+                 val dateTime = LocalDateTime.parse(it, isoFormatter)
+                 dateTime.format(dateFormatter)
+             } ?: ""
+         } catch (e: Exception) {
+             ""
+         }
+     }*/
 
     private fun extractFeatures(advertisement: Advertisement): List<String> {
         val features = mutableListOf<String>()
@@ -387,6 +461,7 @@ data class Advertisement(
     val purpose: String? = null,
     val documents: List<String>? = null,
     val status: String? = null,
+    @SerialName("views_count")
     val viewsCount: Int? = null,
     val isPremium: Boolean? = null,
     val isFeatured: Boolean? = null,
@@ -435,7 +510,7 @@ data class AdvertisementState(
     val cadastralNumber: String = "",
     val purpose: String = "ИЖС", // назначение земли
     val documents: List<String> = emptyList(),
-    val viewsCount: Int = 0,
+    var viewsCount: Int = 0,
     val phoneNumber: String = "",
     val features: List<String> = emptyList(), // особенности
     val additionalInfo: String = ""

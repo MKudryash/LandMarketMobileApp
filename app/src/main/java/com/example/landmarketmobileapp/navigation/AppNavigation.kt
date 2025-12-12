@@ -105,7 +105,12 @@ fun AppNavigation(navController: NavHostController) {
         composable(Screen.AdvertisementDetail.route,
             arguments = listOf(navArgument("id") { type = NavType.StringType })) { backStackEntry ->
                 val id = backStackEntry.arguments?.getString("id") ?: ""
-            AdvertisementDetailScreen(id)
+            AdvertisementDetailScreen(id,{
+                navController.navigate(Screen.Ads.route){
+                    popUpTo(0)
+                }
+            })
+
         }
 
         composable(Screen.Village.route,

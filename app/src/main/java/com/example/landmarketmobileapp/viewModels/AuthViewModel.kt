@@ -116,7 +116,7 @@ sealed class ResultState {
 }
 data class SignInState (
     val email: String = "t@t.ru",
-    val password: String = "1",
+    val password: String = "User123!",
     var errorEmail:Boolean = false,
     val errorPassword:Boolean = false
 )
