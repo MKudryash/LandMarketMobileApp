@@ -75,4 +75,6 @@ dependencies {
     // Ktor
     implementation("io.ktor:ktor-client-cio:3.3.3")  // Обновите версию Ktor
 
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+
 }

@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.landmarketmobileapp.data.Constatnt.supabase
+import com.example.landmarketmobileapp.data.Constants.supabase
 import com.example.landmarketmobileapp.models.Profile
 import com.example.landmarketmobileapp.screens.Coordinates
 import io.github.jan.supabase.auth.auth

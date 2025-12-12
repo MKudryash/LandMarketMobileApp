@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.landmarketmobileapp.R
+import com.example.landmarketmobileapp.viewModels.Region
+import com.example.landmarketmobileapp.viewModels.RegionUI
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -151,7 +153,7 @@ fun CardVillage(
 }
 @Composable
 fun CardRegion(
-    region: Region
+    region: RegionUI
 ) {
     val formatter = NumberFormat.getNumberInstance(Locale.getDefault())
     Box(
@@ -190,11 +192,11 @@ fun CardRegion(
             modifier = Modifier.fillMaxSize()
         ) {
             Text(
-                region.title,
+                region.name,
                 color = Color.White,
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Normal,
-                fontSize = 20.sp,
+                fontSize = 18.sp,
                 fontFamily = FontFamily(Font(R.font.montserrat_bold)),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -233,16 +235,3 @@ fun CardVillagePreview() {
     CardVillage("", "Бахтаево PARK", 600000, 150000, "Егорьевское ш. 45 км.")
 }
 
-@Preview
-@Composable
-fun CardRegionPreview() {
-    CardRegion(Region("", "Бахтаево PARK", 150000, "Егорьевское ш. 45 км."))
-}
-
-data class Region(
-    val imageUrl: String,
-    val title: String,
-    val costPerHundred:Int,
-    val address: String,
-
-)

@@ -141,13 +141,12 @@ fun AuthScreen(onNavigateToMain: () -> Unit, onNavigateToSignUp: () -> Unit,
             }
 
             ResultState.Loading -> {
-                Box(
+                Row(
                     Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-
-               )
+                    verticalAlignment = Alignment.CenterVertically
+                )
                 {
-                    CircularProgressIndicator( )
+                    CircularProgressIndicator(  Modifier.fillMaxWidth())
                 }
             }
 

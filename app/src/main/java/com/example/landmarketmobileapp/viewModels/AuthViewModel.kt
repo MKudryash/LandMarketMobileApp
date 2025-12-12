@@ -6,8 +6,7 @@ import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.landmarketmobileapp.data.Constatnt
-import com.example.landmarketmobileapp.data.Constatnt.supabase
+import com.example.landmarketmobileapp.data.Constants.supabase
 import com.example.landmarketmobileapp.models.Profile
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.exception.AuthErrorCode
@@ -51,7 +50,7 @@ class AuthViewModel: ViewModel() {
         if (_uiState.value.errorEmail) {
             viewModelScope.launch {
                 try {
-                    Constatnt.supabase.auth.signInWith(Email)
+                    supabase.auth.signInWith(Email)
                     {
                         email = _uiState.value.email
                         password = _uiState.value.password
@@ -77,7 +76,7 @@ class AuthViewModel: ViewModel() {
         if (_uiStateSignUp.value.isEmailError && _uiStateSignUp.value.password== _uiStateSignUp.value.confirmPassword) {
             viewModelScope.launch {
                 try {
-                    Constatnt.supabase.auth.signUpWith(Email)
+                    supabase.auth.signUpWith(Email)
                     {
                         email = _uiStateSignUp.value.email
                         password = _uiStateSignUp.value.password
@@ -116,7 +115,7 @@ sealed class ResultState {
 }
 data class SignInState (
     val email: String = "t@t.ru",
-    val password: String = "User123!",
+    val password: String = "1",
     var errorEmail:Boolean = false,
     val errorPassword:Boolean = false
 )
