@@ -21,8 +21,8 @@ fun MainAppScaffold(navController: NavHostController) {
 
     val shouldShowBottomNav = when {
         currentRoute?.startsWith("main") == true -> true
-        currentRoute?.startsWith("task") == true && !currentRoute.contains("task_info") -> true
-        currentRoute?.startsWith("statistics") == true -> true
+        currentRoute?.startsWith("ads") == true -> true
+        currentRoute?.startsWith("messages") == true -> true
         currentRoute?.startsWith("profile") == true -> true
         else -> false
     }
@@ -34,7 +34,7 @@ fun MainAppScaffold(navController: NavHostController) {
         selectedItem = when {
             currentRoute?.startsWith("main") == true -> NavItem.Home
             currentRoute?.startsWith("ads") == true -> NavItem.Ads
-            currentRoute?.startsWith("messages") == true -> NavItem.Messages // Исправлено
+            currentRoute?.startsWith("messages") == true -> NavItem.Messages
             currentRoute?.startsWith("profile") == true -> NavItem.Profile // Исправлено
             else -> selectedItem
         }
@@ -79,7 +79,7 @@ fun MainAppScaffold(navController: NavHostController) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF2C3646))
+                .background(Color(0xFFD9D9D9))
                 .padding(paddingValues)
         ) {
             AppNavigation(navController)

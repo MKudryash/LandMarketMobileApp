@@ -7,7 +7,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.landmarketmobileapp.screens.AdsScreen
+import com.example.landmarketmobileapp.screens.AdvertisementDetailScreen
 import com.example.landmarketmobileapp.screens.AuthScreen
+import com.example.landmarketmobileapp.screens.ChatScreen
 import com.example.landmarketmobileapp.screens.MainScreen
 import com.example.landmarketmobileapp.screens.MessagesScreen
 import com.example.landmarketmobileapp.screens.ProfileScreen
@@ -21,7 +23,6 @@ fun AppNavigation(navController: NavHostController) {
         navController = navController,
         startDestination = Screen.Auth.route // Или другой стартовый экран
     ) {
-
 
 
         composable(Screen.Auth.route) {
@@ -62,20 +63,49 @@ fun AppNavigation(navController: NavHostController) {
 
             )
         }
-        composable(Screen.Profile.route) {
+        composable(Screen.Messages.route) {
             MessagesScreen(
-
+                onNavigationChat = {it->navController.navigate(Screen.Chat.createRoute(it))}
             )
         }
-        composable(Screen.Profile.route) {
+        composable(Screen.Ads.route) {
             AdsScreen(
-
+                onNavigateDetailInform = { it ->
+                    navController.navigate(
+                        Screen.AdvertisementDetail.createRoute(
+                            it
+                        )
+                    )
+                }
             )
         }
-        composable(Screen.Region.route,
+        composable(
+            Screen.Region.route,
+            arguments = listOf(navArgument("id") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("id") ?: ""
+            RegionScreen(id)
+        }
+
+        composable(
+            Screen.Chat.route,
+            arguments = listOf(navArgument("id") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("id") ?: ""
+            ChatScreen(
+                {
+                    navController.navigate(Screen.Messages.route) {
+                        popUpTo(0)
+                    }
+                },
+                id
+            )
+        }
+
+        composable(Screen.AdvertisementDetail.route,
             arguments = listOf(navArgument("id") { type = NavType.StringType })) { backStackEntry ->
                 val id = backStackEntry.arguments?.getString("id") ?: ""
-            RegionScreen(id)
+            AdvertisementDetailScreen(id)
         }
 
         composable(Screen.Village.route,

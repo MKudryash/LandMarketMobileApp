@@ -1,38 +1,243 @@
 package com.example.landmarketmobileapp.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.landmarketmobileapp.R
 
 @Composable
 fun AuthScreen(onNavigateToMain: () -> Unit, onNavigateToSignUp: () -> Unit) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFD9D9D9))
+            .padding(horizontal = 24.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
+        // Логотип
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.icon_app),
+                contentDescription = "Логотип",
+                tint = Color(0xFF6AA26C),
+                modifier = Modifier.size(120.dp)
+            )
+        }
+
+        // Заголовок
+        Text(
+            text = "Вход в аккаунт",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF6AA26C),
+            modifier = Modifier.padding(bottom = 16.dp),
+            fontFamily = FontFamily(Font(R.font.montserrat_bold))
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Поле email
+        AuthTextField(
+            value = email,
+            onValueChange = { email = it },
+            label = "Email",
+            keyboardType = KeyboardType.Email
+        )
+
+        // Поле пароля
+        AuthTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = "Пароль",
+            keyboardType = KeyboardType.Password,
+            isPassword = true,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
+
+        // Кнопка входа
+        AuthButton(
+            text = "Войти",
+            onClick = {
+                // Здесь логика аутентификации
+                onNavigateToMain()
+            }
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Ссылка на регистрацию
+        AuthTextLink(
+            prefixText = "Еще нет аккаунта?",
+            linkText = "Зарегистрироваться",
+            onClick = onNavigateToSignUp
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Preview
+@Composable
+fun AuthScreenPreview() {
+    AuthScreen({}, {})
+
 }
 @Composable
-fun SignUpScreen(onNavigateToAuth: () -> Unit, onNavigateToMain: () -> Unit) {
-
+fun AuthTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    isPassword: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    var passwordVisible by remember { mutableStateOf(false) }
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = {
+            Text(
+                label,
+                fontFamily = FontFamily(Font(R.font.montserrat_regular))
+            )
+        },
+        trailingIcon = {
+            if (isPassword) {
+                IconButton(
+                    onClick = { passwordVisible = !passwordVisible },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(
+                            id = if (passwordVisible) {
+                                R.drawable.eye_close // Иконка скрытого пароля
+                            } else {
+                                R.drawable.eye_open // Иконка видимого пароля
+                            }
+                        ),
+                        contentDescription = if (passwordVisible) {
+                            "Скрыть пароль"
+                        } else {
+                            "Показать пароль"
+                        },
+                        tint = Color.DarkGray.copy(alpha = 0.5f)
+                    )
+                }
+            }
+        },
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp),
+        shape = RoundedCornerShape(12.dp),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        visualTransformation = if (!passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
+        singleLine = true
+    )
 }
 @Composable
-fun MainScreen(onNavigateToVillage: (String) -> Unit, onNavigateToRegion: (String) -> Unit) {
-
+fun AuthButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    backgroundColor: Color = Color(0xFF6AA26C),
+    textColor: Color = Color.White
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = backgroundColor,
+            contentColor = Color.White
+        ),
+        enabled = enabled
+    ) {
+        Text(
+            text = text,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            fontFamily = FontFamily(Font(R.font.montserrat_bold))
+        )
+    }
 }
-
 @Composable
-fun ProfileScreen() {
-
-}
-
-@Composable
-fun MessagesScreen() {
-
-}
-@Composable
-fun AdsScreen() {
-
-}
-
-@Composable
-fun RegionScreen(id: String) {
-
-}
-@Composable
-fun VillageScreen(id: String) {
-
+fun AuthTextLink(
+    prefixText: String,
+    linkText: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column (
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = prefixText,
+            fontSize = 16.sp,
+            color = Color.Gray,
+            fontFamily = FontFamily(Font(R.font.montserrat_regular))
+        )
+        TextButton(
+            onClick = onClick,
+            modifier = Modifier.padding(start = 4.dp)
+        ) {
+            Text(
+                text = linkText,
+                fontSize = 16.sp,
+                color = Color(0xFF6AA26C),
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = FontFamily(Font(R.font.montserrat_bold))
+            )
+        }
+    }
 }

@@ -16,12 +16,22 @@ sealed class Screen(val route: String, val screenType: ScreenType) {
     object Profile : Screen("profile", ScreenType.WithBottomNav)
     object Messages : Screen("messages", ScreenType.WithBottomNav)
     object Ads : Screen("ads", ScreenType.WithBottomNav)
-    object Region : Screen("region", ScreenType.WithBottomNav){
+    object AdvertisementDetail : Screen("advertisementdetail/{id}", ScreenType.WithBottomNav){
+        fun createRoute(id: String): String {
+            return "advertisementdetail/${id}"
+        }
+    }
+    object Chat : Screen("chat/{id}", ScreenType.WithBottomNav){
+        fun createRoute(id: String): String {
+            return "chat/${id}"
+        }
+    }
+    object Region : Screen("region/{id}", ScreenType.WithBottomNav){
         fun createRoute(id: String): String {
             return "region/${id}"
         }
     }
-    object Village : Screen("village", ScreenType.WithBottomNav){
+    object Village : Screen("village/{id}", ScreenType.WithBottomNav){
         fun createRoute(id: String): String {
             return "village/${id}"
         }
