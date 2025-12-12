@@ -39,6 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,21 +58,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.landmarketmobileapp.R
+import com.example.landmarketmobileapp.viewModels.ProfileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen() {
-    var userData by remember {
-        mutableStateOf(
-            UserProfile(
-                name = "Иван Иванов",
-                email = "ivan@example.com",
-                phone = "+7 (999) 123-45-67",
-                avatarUrl = null
-            )
-        )
-    }
+fun ProfileScreen(
+    viewModel: ProfileViewModel = viewModel()
+) {
+    val resultState by viewModel.resultState.collectAsState() // использует collectAsState() для преобразования потока состояний (Flow<ResultState>) из ViewModel в состояние
+    val uiState = viewModel.uiState
 
     var isEditing by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(false) }
@@ -118,7 +115,7 @@ fun ProfileScreen() {
                             .clip(CircleShape)
                             .background(Color.White)
                     ) {
-                        if (userData.avatarUrl != null) {
+                        if (uiState.imageUrl != null) {
                             Image(
                                 painter = painterResource(id = R.drawable.icon_app),
                                 contentDescription = "Аватар",
@@ -157,7 +154,7 @@ fun ProfileScreen() {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = userData.name,
+                    text = uiState.username,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
@@ -165,7 +162,7 @@ fun ProfileScreen() {
                 )
 
                 Text(
-                    text = userData.email,
+                    text = uiState.email,
                     fontSize = 14.sp,
                     color = Color.White.copy(alpha = 0.9f),
                     fontFamily = FontFamily(Font(R.font.montserrat_regular))
@@ -211,9 +208,10 @@ fun ProfileScreen() {
                     ProfileField(
                         icon = Icons.Default.Person,
                         label = "Имя",
-                        value = userData.name,
+                        value = uiState.username,
                         isEditing = isEditing,
-                        onValueChange = { userData = userData.copy(name = it) },
+                        onValueChange = { viewModel.updateState(uiState.copy(username = it)) },
+
                         keyboardType = KeyboardType.Text
                     )
 
@@ -223,9 +221,10 @@ fun ProfileScreen() {
                     ProfileField(
                         icon = Icons.Default.Email,
                         label = "Email",
-                        value = userData.email,
+                        value = uiState.email,
                         isEditing = isEditing,
-                        onValueChange = { userData = userData.copy(email = it) },
+                        onValueChange = { viewModel.updateState(uiState.copy(email = it)) },
+
                         keyboardType = KeyboardType.Email
                     )
 
@@ -235,9 +234,10 @@ fun ProfileScreen() {
                     ProfileField(
                         icon = Icons.Default.Phone,
                         label = "Телефон",
-                        value = userData.phone,
+                        value = uiState.telephone,
                         isEditing = isEditing,
-                        onValueChange = { userData = userData.copy(phone = it) },
+                        onValueChange = { viewModel.updateState(uiState.copy(telephone = it)) },
+
                         keyboardType = KeyboardType.Phone
                     )
 
@@ -259,7 +259,7 @@ fun ProfileScreen() {
 
                             Button(
                                 onClick = {
-                                    // Сохранение данных
+                                   viewModel.updateUser()
                                     isEditing = false
                                 },
                                 modifier = Modifier.weight(1f),
@@ -342,7 +342,7 @@ fun ProfileScreen() {
         ChangePasswordDialog(
             onDismiss = { showChangePasswordDialog = false },
             onChangePassword = { oldPass, newPass ->
-                // Логика смены пароля
+              viewModel.requestPasswordReset()
                 showChangePasswordDialog = false
             }
         )
@@ -501,13 +501,6 @@ fun ChangePasswordDialog(
     }
 }
 
-// Модель данных профиля
-data class UserProfile(
-    val name: String,
-    val email: String,
-    val phone: String,
-    val avatarUrl: String?
-)
 
 @Preview
 @Composable

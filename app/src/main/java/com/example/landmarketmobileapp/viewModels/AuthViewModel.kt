@@ -84,11 +84,12 @@ class AuthViewModel: ViewModel() {
                     }
                     Log.d("SignUp", "Success")
                     val user = Profile(
+                        null,
                         _uiStateSignUp.value.username,
                         _uiStateSignUp.value.email,
                         _uiStateSignUp.value.telephone,
                         "",
-                        0
+                        0.0
                     )
                     supabase.from("users").insert(user)
                     _resultStateSignUp.value = ResultState.Success("Success")
@@ -114,8 +115,8 @@ sealed class ResultState {
     data class Error(val message: String) : ResultState() //  Это класс, представляющий ошибку.  Он также содержит свойство message типа String,  которое описывает произошедшую ошибку
 }
 data class SignInState (
-    val email: String = "",
-    val password: String = "",
+    val email: String = "t@t.ru",
+    val password: String = "1",
     var errorEmail:Boolean = false,
     val errorPassword:Boolean = false
 )

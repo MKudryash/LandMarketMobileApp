@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -25,45 +26,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.landmarketmobileapp.R
 import com.example.landmarketmobileapp.components.SearchBarWithSettings
+import com.example.landmarketmobileapp.viewModels.AdvertisementState
+import com.example.landmarketmobileapp.viewModels.AdvertisementViewModel
 import kotlinx.coroutines.delay
 import java.text.NumberFormat
 import java.util.*
 
 // Модель данных для объявления
 // Обновите модель Advertisement для детальной информации
-data class Advertisement(
-    val id: String,
-    val title: String,
-    val description: String,
-    val price: Int,
-    val area: Int, // площадь в сотках
-    val location: String,
-    val coordinates: Coordinates? = null,
-    val imageUrls: List<String> = emptyList(), // несколько фото
-    val isFavorite: Boolean = false,
-    val datePosted: String,
-    val sellerName: String,
-    val sellerRating: Float,
-    val sellerReviewsCount: Int = 0,
-    val sellerSince: String = "",
-    val hasElectricity: Boolean = false,
-    val hasWater: Boolean = false,
-    val hasRoad: Boolean = false,
-    val hasGas: Boolean = false,
-    val hasInternet: Boolean = false,
-    val soilType: String = "Чернозем",
-    val relief: String = "Ровный",
-    val distanceToCity: Int = 10, // км до города
-    val cadastralNumber: String = "",
-    val purpose: String = "ИЖС", // назначение земли
-    val documents: List<String> = emptyList(),
-    val viewsCount: Int = 0,
-    val phoneNumber: String = "",
-    val features: List<String> = emptyList(), // особенности
-    val additionalInfo: String = ""
-)
 
 data class Coordinates(
     val latitude: Double,
@@ -90,145 +65,29 @@ data class SimilarAd(
     val imageUrl: String? = null
 )
 
-// Модель для категорий фильтров
-data class Category(
-    val id: String,
-    val name: String,
-    val iconResId: Int,
-    val count: Int = 0
-)
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdsScreen(
-    onNavigateDetailInform:(String)->Unit
+    onNavigateDetailInform: (String) -> Unit,
+    viewModel: AdvertisementViewModel = viewModel()
 ) {
+    val uiState by viewModel.advertisementListState.collectAsState()
     var searchText by remember { mutableStateOf("") }
-    var showFilterDialog by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
-    val scrollState = rememberLazyListState()
 
-    // Фиктивные данные
-    val categories = listOf(
-        Category("all", "Все", R.drawable.user, 150),
-        Category("cheap", "До 500К", R.drawable.ic_cheap, 45),
-        Category("middle", "500К-1М", R.drawable.ic_all, 60),
-        Category("premium", "От 1М", R.drawable.ic_all, 25),
-        Category("electricity", "С электричеством", R.drawable.ic_electricity, 30),
-        Category("water", "С водой", R.drawable.ic_water, 25),
-        Category("road", "С дорогой", R.drawable.ic_all, 40),
-        Category("new", "Новые", R.drawable.ic_all, 20)
-    )
-
-    val advertisements = remember {
-        listOf(
-            Advertisement(
-                id = "1",
-                title = "Участок 15 соток в коттеджном посёлке",
-                description = "Ровный участок в охраняемом посёлке. Все коммуникации по границе. Отличная транспортная доступность.",
-                price = 750000,
-                area = 15,
-                location = "Нижегородская обл., 25 км от города",
-                datePosted = "2 дня назад",
-                sellerName = "Александр",
-                sellerRating = 4.8f,
-                hasElectricity = true,
-                hasWater = true,
-                hasRoad = true,
-                viewsCount = 124,
-                phoneNumber = "+7 (999) 123-45-67"
-            ),
-            Advertisement(
-                id = "2",
-                title = "Земля под ИЖС у леса",
-                description = "Участок в экологически чистом районе. Рядом лес и озеро. Идеальное место для строительства дома.",
-                price = 450000,
-                area = 12,
-                location = "Дзержинск, 15 км",
-                datePosted = "5 дней назад",
-                sellerName = "ООО 'Земельные участки'",
-                sellerRating = 4.5f,
-                hasElectricity = true,
-                hasWater = false,
-                hasRoad = true,
-                viewsCount = 89,
-                phoneNumber = "+7 (999) 987-65-43"
-            ),
-            Advertisement(
-                id = "3",
-                title = "Участок в агрогородке 'Солнечный'",
-                description = "Участок с готовым проектом дома. Все документы готовы. Возможна ипотека.",
-                price = 1200000,
-                area = 20,
-                location = "Бор, 10 км от центра",
-                datePosted = "Вчера",
-                sellerName = "Застройщик 'Солнечный'",
-                sellerRating = 4.9f,
-                hasElectricity = true,
-                hasWater = true,
-                hasRoad = true,
-                viewsCount = 256,
-                isFavorite = true,
-                phoneNumber = "+7 (999) 555-44-33"
-            ),
-            Advertisement(
-                id = "4",
-                title = "Сельхоз земля 1 га",
-                description = "Плодородная земля для сельского хозяйства. Рядом река, хорошие подъездные пути.",
-                price = 900000,
-                area = 100,
-                location = "Кстовский район",
-                datePosted = "Неделю назад",
-                sellerName = "Фермерское хозяйство",
-                sellerRating = 4.7f,
-                hasElectricity = false,
-                hasWater = true,
-                hasRoad = true,
-                viewsCount = 67,
-                phoneNumber = "+7 (999) 222-33-44"
-            ),
-            Advertisement(
-                id = "5",
-                title = "Участок в деревне с домом",
-                description = "Участок с деревянным домом. Дом требует косметического ремонта. Земля плодородная.",
-                price = 650000,
-                area = 25,
-                location = "Городец, центр деревни",
-                datePosted = "3 дня назад",
-                sellerName = "Мария Иванова",
-                sellerRating = 4.6f,
-                hasElectricity = true,
-                hasWater = true,
-                hasRoad = false,
-                viewsCount = 143,
-                phoneNumber = "+7 (999) 777-88-99"
-            ),
-            Advertisement(
-                id = "6",
-                title = "Коммерческая земля у трассы",
-                description = "Земля коммерческого назначения. Идеально для АЗС, кафе, склада. Высокая проходимость.",
-                price = 2500000,
-                area = 50,
-                location = "Трасса М7, 35 км от Н.Новгорода",
-                datePosted = "Сегодня",
-                sellerName = "Компания 'Трасса'",
-                sellerRating = 4.8f,
-                hasElectricity = true,
-                hasWater = true,
-                hasRoad = true,
-                viewsCount = 198,
-                phoneNumber = "+7 (999) 444-55-66"
-            )
-        )
+    // Инициализация загрузки при первом открытии
+    LaunchedEffect(Unit) {
+        viewModel.getAdvertisements()
     }
 
     // Фильтрация объявлений
-    val filteredAds = advertisements.filter { ad ->
+    val filteredAds = uiState.advertisements.filter { ad ->
         val matchesSearch = searchText.isEmpty() ||
                 ad.title.contains(searchText, ignoreCase = true) ||
                 ad.description.contains(searchText, ignoreCase = true) ||
-                ad.location.contains(searchText, ignoreCase = true)
+                ad.location!!.contains(searchText, ignoreCase = true)
 
         val matchesCategory = when (selectedCategory) {
             "cheap" -> ad.price <= 500000
@@ -242,12 +101,6 @@ fun AdsScreen(
         }
 
         matchesSearch && matchesCategory
-    }
-
-    LaunchedEffect(searchText, selectedCategory) {
-        isLoading = true
-        delay(300) // Имитация загрузки
-        isLoading = false
     }
 
     Scaffold(
@@ -275,15 +128,6 @@ fun AdsScreen(
                             contentDescription = "Избранное"
                         )
                     }
-
-                    IconButton(
-                        onClick = { /* Поделиться или другие действия */ }
-                    ) {
-                        Icon(
-                            Icons.Default.Share,
-                            contentDescription = "Поделиться"
-                        )
-                    }
                 }
             )
         }
@@ -297,8 +141,14 @@ fun AdsScreen(
             // Поисковая строка
             SearchBarWithSettings(
                 searchText = searchText,
-                onSearchTextChange = { searchText = it },
-                onSettingsClick = { showFilterDialog = true },
+                onSearchTextChange = {
+                    searchText = it
+                    // Можно добавить поиск с задержкой
+                    if (it.length > 2) {
+                        viewModel.getAdvertisements(searchQuery = it)
+                    }
+                },
+                onSettingsClick = { /* Показать фильтры */ },
                 placeholder = "Поиск объявлений...",
                 modifier = Modifier
                     .fillMaxWidth()
@@ -339,9 +189,13 @@ fun AdsScreen(
                     fontFamily = FontFamily(Font(R.font.montserrat_medium))
                 )
 
-                if (selectedCategory != null) {
+                if (selectedCategory != null || searchText.isNotEmpty()) {
                     TextButton(
-                        onClick = { selectedCategory = null }
+                        onClick = {
+                            selectedCategory = null
+                            searchText = ""
+                            viewModel.getAdvertisements()
+                        }
                     ) {
                         Text("Сбросить фильтр")
                     }
@@ -349,14 +203,59 @@ fun AdsScreen(
             }
 
             // Список объявлений
-            if (isLoading) {
+            if (uiState.isLoading && filteredAds.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = Color(0xFF6AA26C))
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        CircularProgressIndicator(color = Color(0xFF6AA26C))
+                        Text("Загрузка объявлений...")
+                    }
+                }
+            } else if (uiState.error != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = "Ошибка",
+                            tint = Color.Red,
+                            modifier = Modifier.size(64.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = uiState.error ?: "Произошла ошибка",
+                            fontSize = 18.sp,
+                            color = Color.Gray,
+                            fontFamily = FontFamily(Font(R.font.montserrat_bold))
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = { viewModel.getAdvertisements() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF6AA26C)
+                            )
+                        ) {
+                            Text("Повторить попытку")
+                        }
+                    }
                 }
             } else if (filteredAds.isEmpty()) {
                 Box(
@@ -398,6 +297,7 @@ fun AdsScreen(
                             onClick = {
                                 searchText = ""
                                 selectedCategory = null
+                                viewModel.getAdvertisements()
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF6AA26C)
@@ -412,23 +312,37 @@ fun AdsScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .weight(1f),
-                    state = scrollState,
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     items(filteredAds) { ad ->
                         AdvertisementCard(
                             advertisement = ad,
-                            onFavoriteClick = { /* Логика добавления в избранное */ },
-                            onCardClick = {   onNavigateDetailInform(ad.id) }
+                            viewModel = viewModel,
+                            onCardClick = { onNavigateDetailInform(ad.id) }
                         )
                     }
 
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
+                    // Индикатор загрузки внизу при подгрузке
+                    if (uiState.isLoading && filteredAds.isNotEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    color = Color(0xFF6AA26C),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
 
-                        // Кнопка "Показать еще"
-                        if (filteredAds.size >= 6) {
+                    // Кнопка "Показать еще" если есть еще объявления
+                    if (uiState.hasMore && !uiState.isLoading) {
+                        item {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -436,7 +350,12 @@ fun AdsScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 OutlinedButton(
-                                    onClick = { /* Загрузка дополнительных объявлений */ },
+                                    onClick = {
+                                        viewModel.getAdvertisements(
+                                            limit = 20,
+                                            offset = filteredAds.size
+                                        )
+                                    },
                                     colors = ButtonDefaults.outlinedButtonColors(
                                         contentColor = Color(0xFF6AA26C)
                                     ),
@@ -462,63 +381,13 @@ fun AdsScreen(
 }
 
 @Composable
-fun CategoryChip(
-    category: Category,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick),
-        color = if (isSelected) Color(0xFF6AA26C) else Color.White,
-        tonalElevation = 2.dp,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Icon(
-                painter = painterResource(id = category.iconResId),
-                contentDescription = category.name,
-                tint = if (isSelected) Color.White else Color(0xFF6AA26C),
-                modifier = Modifier.size(16.dp)
-            )
-
-            Text(
-                text = category.name,
-                fontSize = 12.sp,
-                color = if (isSelected) Color.White else Color.Black,
-                fontFamily = FontFamily(Font(R.font.montserrat_medium))
-            )
-
-            if (category.count > 0) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSelected) Color.White.copy(alpha = 0.3f) else Color.Gray.copy(alpha = 0.1f))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = category.count.toString(),
-                        fontSize = 10.sp,
-                        color = if (isSelected) Color.White else Color.Gray,
-                        fontFamily = FontFamily(Font(R.font.montserrat_bold))
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun AdvertisementCard(
-    advertisement: Advertisement,
-    onFavoriteClick: () -> Unit,
+    advertisement: AdvertisementState,
+    viewModel: AdvertisementViewModel,
     onCardClick: () -> Unit
 ) {
     val formatter = NumberFormat.getNumberInstance(Locale.getDefault())
+    var isFavorite by remember { mutableStateOf(advertisement.isFavorite) }
 
     Card(
         modifier = Modifier
@@ -529,29 +398,40 @@ fun AdvertisementCard(
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Изображение и кнопка избранного
+            // Изображение
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(180.dp)
                     .background(Color.LightGray)
             ) {
-                // Здесь должно быть изображение
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color(0xFF6AA26C).copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.icon_app),
+                if (advertisement.imageUrls!!.isNotEmpty()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(advertisement.imageUrls.first())
+                            .crossfade(true)
+                            .build(),
                         contentDescription = "Изображение участка",
-                        tint = Color(0xFF6AA26C),
-                        modifier = Modifier.size(64.dp)
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0xFF6AA26C).copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.icon_app),
+                            contentDescription = "Нет изображения",
+                            tint = Color(0xFF6AA26C),
+                            modifier = Modifier.size(64.dp)
+                        )
+                    }
                 }
 
-                // Бейдж "Новое" или "Популярное"
+                // Бейдж "Новое"
                 if (advertisement.datePosted.contains("сегодня") || advertisement.datePosted.contains("вчера")) {
                     Box(
                         modifier = Modifier
@@ -573,15 +453,18 @@ fun AdvertisementCard(
 
                 // Кнопка избранного
                 IconButton(
-                    onClick = onFavoriteClick,
+                    onClick = {
+                        isFavorite = !isFavorite
+                        viewModel.toggleFavorite(advertisement.id)
+                    },
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
                 ) {
                     Icon(
-                        if (advertisement.isFavorite) Icons.Filled.Favorite else Icons.Default.FavoriteBorder,
+                        if (isFavorite) Icons.Filled.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = "В избранное",
-                        tint = if (advertisement.isFavorite) Color.Red else Color.White
+                        tint = if (isFavorite) Color.Red else Color.White
                     )
                 }
             }
@@ -654,7 +537,7 @@ fun AdvertisementCard(
                     Spacer(modifier = Modifier.width(4.dp))
 
                     Text(
-                        text = advertisement.location,
+                        text = advertisement.location!!,
                         fontSize = 14.sp,
                         color = Color.Gray,
                         fontFamily = FontFamily(Font(R.font.montserrat_medium)),
@@ -666,9 +549,9 @@ fun AdvertisementCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Описание
+                // Короткое описание
                 Text(
-                    text = advertisement.description,
+                    text = advertisement.description.take(100) + if (advertisement.description.length > 100) "..." else "",
                     fontSize = 14.sp,
                     color = Color.DarkGray,
                     fontFamily = FontFamily(Font(R.font.montserrat_regular)),
@@ -685,29 +568,43 @@ fun AdvertisementCard(
                 ) {
                     if (advertisement.hasElectricity) {
                         CommunicationChip(
-                            icon = Icons.Default.Person,
+                            icon = Icons.Default.Share,
                             text = "Электричество"
                         )
                     }
 
                     if (advertisement.hasWater) {
                         CommunicationChip(
-                            icon = Icons.Default.Person,
+                            icon = Icons.Default.Share,
                             text = "Вода"
                         )
                     }
 
                     if (advertisement.hasRoad) {
                         CommunicationChip(
-                            icon = Icons.Default.Person,
+                            icon = Icons.Default.Share,
                             text = "Дорога"
+                        )
+                    }
+
+                    if (advertisement.hasGas) {
+                        CommunicationChip(
+                            icon = Icons.Default.Share,
+                            text = "Газ"
+                        )
+                    }
+
+                    if (advertisement.hasInternet) {
+                        CommunicationChip(
+                            icon = Icons.Default.Share,
+                            text = "Интернет"
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Информация о продавце и дата
+                // Продавец и дата
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -775,9 +672,8 @@ fun AdvertisementCard(
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-
                             Icon(
-                               painterResource(R.drawable.eye_open),
+                                painterResource(R.drawable.eye_open),
                                 contentDescription = "Просмотры",
                                 tint = Color.Gray,
                                 modifier = Modifier.size(12.dp)
@@ -794,37 +690,29 @@ fun AdvertisementCard(
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Кнопка связи
-                Button(
-                    onClick = { /* Позвонить или написать */ },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF6AA26C)
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Phone,
-                            contentDescription = "Позвонить",
-                            modifier = Modifier.size(18.dp)
-                        )
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Text("Связаться с продавцом")
-                    }
-                }
             }
         }
     }
 }
+
+// Категории фильтров (можно вынести в отдельный файл)
+val categories = listOf(
+    Category("all", "Все", R.drawable.ic_all, 0),
+    Category("cheap", "До 500к", R.drawable.ic_cheap, 0),
+    Category("middle", "500к-1м", R.drawable.ic_cheap, 0),
+    Category("premium", "Премиум", R.drawable.ic_cheap, 0),
+    Category("electricity", "Свет", R.drawable.ic_electricity, 0),
+    Category("water", "Вода", R.drawable.ic_water, 0),
+    Category("road", "Дорога", R.drawable.ic_cheap, 0),
+    Category("new", "Новые", R.drawable.ic_cheap, 0)
+)
+
+data class Category(
+    val id: String,
+    val name: String,
+    val iconResId: Int,
+    val count: Int = 0
+)
 
 @Composable
 fun CommunicationChip(
@@ -837,7 +725,7 @@ fun CommunicationChip(
         color = Color(0xFF6AA26C).copy(alpha = 0.1f)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -858,4 +746,46 @@ fun CommunicationChip(
         }
     }
 }
+
+@Composable
+fun CategoryChip(
+    category: Category,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick),
+        color = if (isSelected) Color(0xFF6AA26C) else Color.White,
+        tonalElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                painter = painterResource(id = category.iconResId),
+                contentDescription = category.name,
+                tint = if (isSelected) Color.White else Color(0xFF6AA26C),
+                modifier = Modifier.size(16.dp)
+            )
+
+            Text(
+                text = category.name,
+                fontSize = 12.sp,
+                color = if (isSelected) Color.White else Color.Black,
+                fontFamily = FontFamily(Font(R.font.montserrat_medium))
+            )
+        }
+    }
+}
+
+// Для icon drawable ресурсов создайте следующие файлы в res/drawable:
+/*
+ic_all.xml, ic_cheap.xml, ic_middle.xml, ic_premium.xml,
+ic_electricity.xml, ic_water.xml, ic_road.xml, ic_new.xml,
+ic_area.xml
+*/
 
