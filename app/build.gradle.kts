@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id ("org.jetbrains.kotlin.plugin.serialization") version "1.9.0"
+    id ("org.jetbrains.kotlin.plugin.serialization") version "1.9.24"
 }
 
 android {
@@ -64,4 +64,15 @@ dependencies {
 
     implementation("androidx.navigation:navigation-compose:2.8.6")
     implementation("io.coil-kt:coil-compose:2.7.0")
+
+
+    // Supabase
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.2.6"))  // Используйте стабильную версию
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.github.jan-tennert.supabase:auth-kt")
+    implementation("io.github.jan-tennert.supabase:realtime-kt")
+
+    // Ktor
+    implementation("io.ktor:ktor-client-cio:3.3.3")  // Обновите версию Ktor
+
 }

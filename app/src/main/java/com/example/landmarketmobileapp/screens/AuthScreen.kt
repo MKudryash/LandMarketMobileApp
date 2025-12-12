@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -24,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,15 +40,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.landmarketmobileapp.R
+import com.example.landmarketmobileapp.viewModels.AuthViewModel
+import com.example.landmarketmobileapp.viewModels.ResultState
+import kotlinx.datetime.Month
 
 @Composable
-fun AuthScreen(onNavigateToMain: () -> Unit, onNavigateToSignUp: () -> Unit) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+fun AuthScreen(onNavigateToMain: () -> Unit, onNavigateToSignUp: () -> Unit,
+               authViewModel: AuthViewModel = viewModel()) {
+    val resultState by authViewModel.resultState.collectAsState() // использует collectAsState() для преобразования потока состояний (Flow<ResultState>) из ViewModel в состояние
+    val uiState = authViewModel.uiState
 
     Column(
         modifier = Modifier
@@ -84,34 +92,69 @@ fun AuthScreen(onNavigateToMain: () -> Unit, onNavigateToSignUp: () -> Unit) {
 
         // Поле email
         AuthTextField(
-            value = email,
-            onValueChange = { email = it },
+            value = uiState.email,
+            onValueChange = { authViewModel.updateState(uiState.copy(email = it)) },
             label = "Email",
-            keyboardType = KeyboardType.Email
+            keyboardType = KeyboardType.Email,
+            isPassword = false
         )
 
         // Поле пароля
         AuthTextField(
-            value = password,
-            onValueChange = { password = it },
+            value = uiState.password,
+            onValueChange = { authViewModel.updateState(uiState.copy(password = it)) },
             label = "Пароль",
             keyboardType = KeyboardType.Password,
             isPassword = true,
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
-        // Кнопка входа
-        AuthButton(
-            text = "Войти",
-            onClick = {
-                // Здесь логика аутентификации
-                onNavigateToMain()
-            }
-        )
+
 
         Spacer(modifier = Modifier.height(32.dp))
+        when (resultState) {
+            is ResultState.Error -> {
+                AuthButton(
+                    text = "Войти",
+                    onClick = {
+                        authViewModel.signIn()
+                    }
+                )
+                Text(
+                    text = (resultState as ResultState.Error).message,
+                    color = Color.Red,
+                    textAlign = TextAlign.Center,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = FontFamily(Font(R.font.montserrat_regular)),
+                    modifier = Modifier.fillMaxWidth().padding(10.dp)
+                )
+            }
 
-        // Ссылка на регистрацию
+            is ResultState.Initialized -> {
+                AuthButton(
+                    text = "Войти",
+                    onClick = {
+                        authViewModel.signIn()
+                    }
+                )
+            }
+
+            ResultState.Loading -> {
+                Box(
+                    Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+
+               )
+                {
+                    CircularProgressIndicator( )
+                }
+            }
+
+            is ResultState.Success -> {
+                onNavigateToMain()
+            }
+        }
         AuthTextLink(
             prefixText = "Еще нет аккаунта?",
             linkText = "Зарегистрироваться",
@@ -176,7 +219,7 @@ fun AuthTextField(
             .padding(bottom = 12.dp),
         shape = RoundedCornerShape(12.dp),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        visualTransformation = if (!passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
+        visualTransformation = if (!passwordVisible && isPassword) PasswordVisualTransformation() else VisualTransformation.None,
         singleLine = true
     )
 }
