@@ -1,10 +1,12 @@
 package com.example.landmarketmobileapp.screens
 
+import ReviewItem
+import android.Manifest
+import android.util.Log
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,15 +18,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -32,8 +37,17 @@ import com.example.landmarketmobileapp.R
 import com.example.landmarketmobileapp.viewModels.AdvertisementState
 import com.example.landmarketmobileapp.viewModels.AdvertisementViewModel
 import com.example.landmarketmobileapp.viewModels.CoordinatesState
+import com.example.landmarketmobileapp.viewModels.ReviewState
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.PermissionStatus
+import com.google.accompanist.permissions.rememberPermissionState
+import com.yandex.mapkit.map.CameraPosition
 import kotlinx.coroutines.launch
-import okhttp3.internal.wait
+import ru.sulgik.mapkit.compose.YandexMap
+import ru.sulgik.mapkit.compose.bindToLifecycleOwner
+import ru.sulgik.mapkit.compose.rememberAndInitializeMapKit
+import ru.sulgik.mapkit.compose.rememberCameraPositionState
+import ru.sulgik.mapkit.geometry.Point
 import java.text.NumberFormat
 import java.util.*
 
@@ -198,7 +212,9 @@ fun AdvertisementDetailScreen(
         MapDialog(
             location = ad.location!!,
             coordinates = ad.coordinates,
-            onDismiss = { showMapDialog = false }
+            onDismiss = { showMapDialog = false },
+            center_longitude = ad.center_longitude?:0.0,
+            center_latitude = ad.center_latitude?:0.0
         )
     }
 
@@ -324,19 +340,23 @@ fun AdvertisementDetailScreen(
             // Продавец
             item {
                 SellerSection(
+                    sellerImage =      ad.sellerImage!!,
                     sellerName = ad.sellerName,
                     sellerRating = ad.sellerRating,
                     reviewsCount = ad.sellerReviewsCount,
                     sellerSince = ad.sellerSince,
-                    onContactClick = { showContactDialog = true }
+                    onContactClick = { showContactDialog = true },
+                   review =  ad.reviews!!
                 )
             }
 
             // Карта
             item {
                 MapSection(
-                    location = ad.location!!,
-                    onMapClick = { showMapDialog = true }
+                    center_latitude = ad.center_latitude?:0.0,
+                    center_longitude = ad.center_longitude?: 0.0,
+                    onMapClick = { showMapDialog = true },
+                   location =  ad.location!!
                 )
             }
 
@@ -895,9 +915,11 @@ fun DocumentsSection(documents: List<String>) {
 fun SellerSection(
     sellerName: String,
     sellerRating: Float,
+    sellerImage: String,
     reviewsCount: Int,
     sellerSince: String,
     onContactClick: () -> Unit,
+    review: List<ReviewState>
 ) {
     Column(
         modifier = Modifier
@@ -918,14 +940,25 @@ fun SellerSection(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Аватар продавца
-            Box(
-                modifier = Modifier
-                    .size(60.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF6AA26C))
-            )
-
+            if(sellerImage=="") {
+                Icon(
+                    Icons.Default.Person,
+                    contentDescription = "Продавец",
+                    tint = Color.White,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+            else {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(sellerImage!!)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Изображение",
+                    modifier = Modifier.size(120.dp),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+            }
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(
@@ -977,6 +1010,8 @@ fun SellerSection(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1001,14 +1036,40 @@ fun SellerSection(
                 }
             }
         }
+        Column {
+            review.forEach {it->
+                ReviewItem(it)
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
     }
 }
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MapSection(
-    location: String,
     onMapClick: () -> Unit,
+    center_latitude: Double,
+    center_longitude: Double,
+    location: String
 ) {
+    val context = LocalContext.current
+    var showLocationPermissionDialog by remember { mutableStateOf(false) }
+
+    // Состояние для разрешений
+    val locationPermissionState = rememberPermissionState(
+        Manifest.permission.ACCESS_FINE_LOCATION
+    )
+
+    // Запрос разрешений при первом рендере
+    LaunchedEffect(Unit) {
+        if (locationPermissionState.status != PermissionStatus.Granted) {
+            showLocationPermissionDialog = true
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1041,36 +1102,149 @@ fun MapSection(
             modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
         )
 
-        // Заглушка для карты
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF6AA26C).copy(alpha = 0.1f))
-                .clickable(onClick = onMapClick),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
+        // Проверяем разрешения перед отображением карты
+        if (locationPermissionState.status == PermissionStatus.Granted) {
+            // Разрешения есть - показываем карту
+            rememberAndInitializeMapKit().bindToLifecycleOwner()
+            val startPosition = ru.sulgik.mapkit.map.CameraPosition(
+                Point(center_latitude, center_longitude),
+                15.0f,
+                0.0f,
+                0.0f
+            )
+            val cameraPositionState = rememberCameraPositionState { position = startPosition }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = onMapClick)
             ) {
-                Icon(
-                    Icons.Default.LocationOn,
-                    contentDescription = "Карта",
-                    tint = Color(0xFF6AA26C),
-                    modifier = Modifier.size(48.dp)
+                YandexMap(
+                    cameraPositionState = cameraPositionState,
+                    modifier = Modifier.fillMaxSize()
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Посмотреть на карте",
-                    fontSize = 16.sp,
-                    color = Color(0xFF6AA26C),
-                    fontFamily = FontFamily(Font(R.font.montserrat_medium))
+                // Затемнение и текст поверх карты для кликабельности
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.2f))
                 )
+
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Увеличить",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                Color(0xFF6AA26C),
+                                CircleShape
+                            )
+                            .padding(12.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Нажмите для детального просмотра",
+                        fontSize = 16.sp,
+                        color = Color.White,
+                        fontFamily = FontFamily(Font(R.font.montserrat_medium))
+                    )
+                }
+            }
+        } else {
+            // Разрешений нет - показываем кнопку для запроса
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF6AA26C).copy(alpha = 0.1f))
+                    .clickable {
+                        showLocationPermissionDialog = true
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Default.LocationOn,
+                        contentDescription = "Нет разрешения",
+                        tint = Color(0xFF6AA26C),
+                        modifier = Modifier.size(48.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Разрешите доступ к местоположению",
+                        fontSize = 16.sp,
+                        color = Color(0xFF6AA26C),
+                        fontFamily = FontFamily(Font(R.font.montserrat_medium)),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Button(
+                        onClick = {
+                            showLocationPermissionDialog = true
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF6AA26C)
+                        )
+                    ) {
+                        Text("Запросить разрешение")
+                    }
+                }
             }
         }
+    }
+
+    // Диалог запроса разрешений
+    if (showLocationPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showLocationPermissionDialog = false },
+            title = {
+                Text(
+                    text = "Доступ к местоположению",
+                    fontFamily = FontFamily(Font(R.font.montserrat_bold))
+                )
+            },
+            text = {
+                Text(
+                    text = "Для отображения карты и вашего местоположения необходимо предоставить доступ к геолокации",
+                    fontFamily = FontFamily(Font(R.font.montserrat_regular))
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        locationPermissionState.launchPermissionRequest()
+                        showLocationPermissionDialog = false
+                    }
+                ) {
+                    Text("Разрешить")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showLocationPermissionDialog = false }
+                ) {
+                    Text("Отмена")
+                }
+            }
+        )
     }
 }
 
@@ -1194,18 +1368,42 @@ fun ContactDialog(
     }
 }
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MapDialog(
     location: String,
+    center_longitude:Double,
+    center_latitude: Double,
     coordinates: CoordinatesState?,
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Dialog(onDismissRequest = onDismiss) {
+    val context = LocalContext.current
+
+    // Проверка разрешений на местоположение
+    val fineLocationPermissionState = rememberPermissionState(
+        Manifest.permission.ACCESS_FINE_LOCATION
+    )
+    val coarseLocationPermissionState = rememberPermissionState(
+        Manifest.permission.ACCESS_COARSE_LOCATION
+    )
+
+    val hasLocationPermission = fineLocationPermissionState.status == PermissionStatus.Granted ||
+            coarseLocationPermissionState.status == PermissionStatus.Granted
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = true
+        )
+    ) {
         Card(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
-                .height(400.dp),
-            shape = RoundedCornerShape(16.dp)
+                .fillMaxHeight(0.9f),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(8.dp)
         ) {
             Column(
                 modifier = Modifier.fillMaxSize()
@@ -1214,67 +1412,298 @@ fun MapDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    androidx.compose.material3.Text(
-                        text = "Расположение участка",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily(Font(R.font.montserrat_bold))
-                    )
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "Расположение участка",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily(Font(R.font.montserrat_bold)),
+                            color = Color.Black
+                        )
 
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Закрыть")
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = location,
+                            fontSize = 14.sp,
+                            fontFamily = FontFamily(Font(R.font.montserrat_regular)),
+                            color = Color.Gray,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .size(36.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Закрыть",
+                            tint = Color.Gray
+                        )
                     }
                 }
 
-                // Заглушка карты
+                // Разделитель
+                Divider(
+                    color = Color.LightGray.copy(alpha = 0.3f),
+                    thickness = 1.dp
+                )
+
+                // Контент карты
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .weight(1f)
-                        .background(Color(0xFF6AA26C).copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            Icons.Default.LocationOn,
-                            contentDescription = "Карта",
-                            tint = Color(0xFF6AA26C),
-                            modifier = Modifier.size(64.dp)
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        androidx.compose.material3.Text(
-                            text = location,
-                            fontSize = 16.sp,
-                            fontFamily = FontFamily(Font(R.font.montserrat_medium)),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
-
-                       /* coordinates {
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            androidx.compose.material3.Text(
-                                text = "${it.latitude}, ${it.longitude}",
-                                fontSize = 14.sp,
-                                color = Color.Gray,
-                                fontFamily = FontFamily(Font(R.font.montserrat_regular))
+                    Log.d("COOR","${center_longitude}, ${center_latitude
+                    }")
+                    if (true) {
+                        if (hasLocationPermission) {
+                            val startPosition = ru.sulgik.mapkit.map.CameraPosition(
+                                Point(center_latitude, center_longitude),
+                                15.0f,
+                                0.0f,
+                                0.0f
                             )
-                        }*/
+                            val cameraPositionState = rememberCameraPositionState { position = startPosition }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                            ) {
+                                YandexMap(
+                                    cameraPositionState = cameraPositionState,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+
+                                // Затемнение и текст поверх карты для кликабельности
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black.copy(alpha = 0.2f))
+                                )
+
+                                Column(
+                                    modifier = Modifier.align(Alignment.Center),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        Icons.Default.KeyboardArrowUp,
+                                        contentDescription = "Увеличить",
+                                        tint = Color.White,
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .background(
+                                                Color(0xFF6AA26C),
+                                                CircleShape
+                                            )
+                                            .padding(12.dp)
+                                    )
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+
+                                }
+                            }
+                            // Кнопки управления на карте
+                            Column(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                            ) {
+                                // Кнопка "Мое местоположение"
+                                if (fineLocationPermissionState.status == PermissionStatus.Granted) {
+                                    Card(
+                                        modifier = Modifier.size(40.dp),
+                                        shape = CircleShape,
+                                        elevation = CardDefaults.cardElevation(4.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(Color.White)
+                                                .clickable {
+                                                    // Переход к текущему местоположению
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                Icons.Default.LocationOn,
+                                                contentDescription = "Мое местоположение",
+                                                tint = Color(0xFF6AA26C),
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+
+                                // Кнопка увеличения
+                                Card(
+                                    modifier = Modifier.size(40.dp),
+                                    shape = RoundedCornerShape(8.dp),
+                                    elevation = CardDefaults.cardElevation(4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.White)
+                                            .clickable {
+                                                // Увеличение масштаба
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Add,
+                                            contentDescription = "Увеличить",
+                                            tint = Color(0xFF6AA26C),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                // Кнопка уменьшения
+                                Card(
+                                    modifier = Modifier.size(40.dp),
+                                    shape = RoundedCornerShape(8.dp),
+                                    elevation = CardDefaults.cardElevation(4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.White)
+                                            .clickable {
+                                                // Уменьшение масштаба
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = "Уменьшить",
+                                            tint = Color(0xFF6AA26C),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            // Без разрешений - показываем статичную карту с кнопкой запроса
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color(0xFF6AA26C).copy(alpha = 0.1f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.padding(24.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.LocationOn,
+                                        contentDescription = "Карта",
+                                        tint = Color(0xFF6AA26C),
+                                        modifier = Modifier.size(64.dp)
+                                    )
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    Text(
+                                        text = location,
+                                        fontSize = 16.sp,
+                                        fontFamily = FontFamily(Font(R.font.montserrat_medium)),
+                                        textAlign = TextAlign.Center,
+                                        color = Color.Black
+                                    )
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    Text(
+                                        text = "Координаты: ${center_latitude}, ${center_longitude}",
+                                        fontSize = 14.sp,
+                                        color = Color.Gray,
+                                        fontFamily = FontFamily(Font(R.font.montserrat_regular))
+                                    )
+
+                                    Spacer(modifier = Modifier.height(24.dp))
+
+                                    Text(
+                                        text = "Для отображения интерактивной карты требуется доступ к местоположению",
+                                        fontSize = 14.sp,
+                                        color = Color.Gray,
+                                        fontFamily = FontFamily(Font(R.font.montserrat_regular)),
+                                        textAlign = TextAlign.Center
+                                    )
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                }
+                            }
+                        }
+                    } else {
+                        // Координаты не указаны
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color(0xFF6AA26C).copy(alpha = 0.1f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Default.LocationOn,
+                                    contentDescription = "Координаты не указаны",
+                                    tint = Color(0xFF6AA26C),
+                                    modifier = Modifier.size(64.dp)
+                                )
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Text(
+                                    text = location,
+                                    fontSize = 16.sp,
+                                    fontFamily = FontFamily(Font(R.font.montserrat_medium)),
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(
+                                    text = "Координаты не указаны",
+                                    fontSize = 14.sp,
+                                    color = Color.Gray,
+                                    fontFamily = FontFamily(Font(R.font.montserrat_regular))
+                                )
+                            }
+                        }
                     }
                 }
+
+
+
             }
         }
     }
 }
 
+// Data class для координат
+data class CoordinatesState(
+    val latitude: Double,
+    val longitude: Double
+)
 @Composable
 fun GalleryDialog(
     imageUrls: List<String>,

@@ -49,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -59,16 +60,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.landmarketmobileapp.R
+import com.example.landmarketmobileapp.viewModels.AuthViewModel
 import com.example.landmarketmobileapp.viewModels.ProfileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    viewModel: ProfileViewModel = viewModel()
+    viewModel: ProfileViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel(),
+    navigateLogOut:()->Unit
 ) {
     val resultState by viewModel.resultState.collectAsState() // использует collectAsState() для преобразования потока состояний (Flow<ResultState>) из ViewModel в состояние
     val uiState = viewModel.uiState
+
+    val context = LocalContext.current
 
     var isEditing by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(false) }
@@ -116,11 +124,14 @@ fun ProfileScreen(
                             .background(Color.White)
                     ) {
                         if (uiState.imageUrl != null) {
-                            Image(
-                                painter = painterResource(id = R.drawable.icon_app),
-                                contentDescription = "Аватар",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(uiState.imageUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Изображение",
+                                modifier = Modifier.size(120.dp),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
                             )
                         } else {
                             Icon(
@@ -322,7 +333,8 @@ fun ProfileScreen(
 
             // Кнопка выхода
             Button(
-                onClick = { /* Выход из аккаунта */ },
+                onClick = { authViewModel.clearSavedCredentials(context)
+                          navigateLogOut()},
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
@@ -505,5 +517,5 @@ fun ChangePasswordDialog(
 @Preview
 @Composable
 fun ProfileScreenPreview() {
-    ProfileScreen()
+    ProfileScreen(navigateLogOut = {})
 }

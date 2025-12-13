@@ -190,12 +190,10 @@ fun SignUpScreen(onNavigateToAuth: () -> Unit, onNavigateToMain: () -> Unit,
 
             ResultState.Loading -> {
                 Box(
-                    Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
-
                 )
                 {
-                    CircularProgressIndicator( )
+                    CircularProgressIndicator(color = Color(0xFF6AA26C))
                 }
             }
 

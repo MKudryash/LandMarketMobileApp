@@ -111,7 +111,7 @@ fun MainScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "GOOD-ZEM — лидирующая онлайн-платформа для продажи земельных участков",
+                    "LANDMARKET — лидирующая онлайн-платформа для продажи земельных участков",
                     color = Color.Black,
                     fontWeight = FontWeight.Normal,
                     fontSize = 20.sp,
@@ -185,7 +185,7 @@ fun MainScreen(
 
         item {
             Text(
-                "GOOD-ZEM — лидирующая онлайн-платформа для продажи земельных участков*",
+                "LANDMARKET — лидирующая онлайн-платформа для продажи земельных участков*",
                 color = Color.Black,
                 fontWeight = FontWeight.Normal,
                 fontSize = 20.sp,

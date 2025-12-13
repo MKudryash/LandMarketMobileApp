@@ -72,7 +72,8 @@ class ProfileViewModel: ViewModel() {
                     _uiState.value = ProfileState(
                         user.email,
                         user.phone,
-                        username = user.fullName
+                        username = user.fullName,
+                        imageUrl = user.image
                     )
                     _resultState.value = ResultState.Success("Success")
                 }

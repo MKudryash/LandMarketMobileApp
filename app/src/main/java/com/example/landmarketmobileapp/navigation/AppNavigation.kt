@@ -60,7 +60,9 @@ fun AppNavigation(navController: NavHostController) {
 
         composable(Screen.Profile.route) {
             ProfileScreen(
-
+                navigateLogOut = {navController.navigate(Screen.Auth.route){
+                    popUpTo(0)
+                } }
             )
         }
         composable(Screen.Messages.route) {

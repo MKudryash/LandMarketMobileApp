@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.landmarketmobileapp.data.Constants.supabase
 import com.example.landmarketmobileapp.models.Profile
 import com.example.landmarketmobileapp.screens.Coordinates
+import com.example.landmarketmobileapp.screens.Review
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.exception.AuthRestException
 import io.github.jan.supabase.postgrest.postgrest
@@ -16,11 +17,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.format
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlin.time.Instant
 
 
 class AdvertisementViewModel : ViewModel() {
@@ -110,9 +116,10 @@ class AdvertisementViewModel : ViewModel() {
                     }
 
                 val advertisements = query.decodeList<Advertisement>()
-
                 // Преобразование в UI состояние
                 val advertisementStates = advertisements.map { ad ->
+                    val sellerInfo = getSellerInfo(ad.userId)
+
                     AdvertisementState(
                         id = ad.id ?: "",
                         title = ad.title ?: "",
@@ -121,11 +128,11 @@ class AdvertisementViewModel : ViewModel() {
                         area = ad.area?.toInt() ?: 0,
                         location = "", // Нужно получить из связанных таблиц
                         imageUrls = getAdvertisementImages(ad.id),
-                        datePosted = "2025-12-12",
-                        sellerName = "", // Нужно получить из таблицы users
-                        sellerRating = 0f,
-                        sellerReviewsCount = 0,
-                        sellerSince = "",
+                        datePosted = formatDate(ad.createdAt),
+                        sellerName = sellerInfo.name, // Нужно получить из таблицы users
+                        sellerRating = sellerInfo.rating,
+                        sellerReviewsCount = sellerInfo.reviewsCount,
+                        sellerSince = sellerInfo.since,
                         hasElectricity = ad.hasElectricity ?: false,
                         hasWater = ad.hasWater ?: false,
                         hasRoad = ad.hasRoad ?: false,
@@ -139,7 +146,11 @@ class AdvertisementViewModel : ViewModel() {
                         documents = ad.documents ?: emptyList(),
                         viewsCount = ad.viewsCount ?: 0,
                         phoneNumber =  "",
-                        features = extractFeatures(ad)
+                        features = extractFeatures(ad),
+                        imageUrl = ad.imageUrl,
+                        sellerImage = sellerInfo.image,
+                        center_latitude = ad.center_latitude,
+                        center_longitude = ad.center_longitude
                     )
                 }
 
@@ -216,11 +227,11 @@ class AdvertisementViewModel : ViewModel() {
             val images = supabase.postgrest
                 .from("advertisement_images")
                 .select {
-                    filter { eq("advertisement_id", advertisementId) }
+                    filter { eq("id_ad", advertisementId) }
                 }
-                .decodeList<Map<String, Any>>()
-
-            images.mapNotNull { it["url"] as? String }
+                .decodeList<AdvertisementImages>()
+            Log.d("IMG",images.toString())
+            images.mapNotNull { it.url}
         } catch (e: Exception) {
             emptyList()
         }
@@ -235,16 +246,80 @@ class AdvertisementViewModel : ViewModel() {
                 .select {
                     filter { eq("id", userId) }
                 }
-                .decodeSingle<Map<String, Any>>()
+                .decodeSingle<Profile>()
 
+            Log.d("IMAGE USER",user.image?:"")
             SellerInfo(
-                name = user["full_name"] as? String ?: "",
-                rating = (user["rating"] as? Double)?.toFloat() ?: 0f,
-                reviewsCount = (user["reviews_count"] as? Int) ?: 0,
-                since = (user["created_at"] as? String)?.let { it} ?: ""
+                name = user.fullName as? String ?: "",
+                rating = (user.rating as? Double)?.toFloat() ?: 0f,
+                reviewsCount =  getSellerReviewsInfoCount(userId),
+                since = "",
+                image = user.image
             )
         } catch (e: Exception) {
             SellerInfo()
+        }
+    }
+
+    private suspend fun getSellerReviewsInfo(userId: String?): List<ReviewState> {
+        Log.d("REW", userId.toString())
+        // Проверка входных данных
+        if (userId.isNullOrBlank()) return emptyList()
+
+        return try {
+            var rewUI = emptyList<ReviewState>()
+            // Выполняем запрос
+          var rew =   supabase.postgrest
+                .from("seller_reviews")
+                .select {
+                    filter { eq("seller_id", userId) }
+                }
+                .decodeList<Review>()
+
+            rew.forEach {
+                var user = getSellerInfo(it.reviewer_id)
+
+                rewUI+= ReviewState(
+                    it.id,
+                    it.reviewer_id,
+                    it.seller_id,
+                    it.advertisement_id,
+                    it.rating,it.title,
+                    it.comment,it.helpful_count,
+                    it.is_verified_purchase,user.name,
+                    it.created_at,
+                    user.image
+                )
+
+            }
+            rewUI
+        } catch (e: Exception) {
+            // Логируем ошибку и возвращаем пустой список
+            println("Ошибка при получении отзывов продавца: ${e.message}")
+            emptyList()
+        }
+    }
+
+    private suspend fun getSellerReviewsInfoCount(userId: String?): Int {
+        Log.d("REW", userId.toString())
+        // Проверка входных данных
+        if (userId.isNullOrBlank()) return 0
+
+        return try {
+
+            // Выполняем запрос
+         supabase.postgrest
+                .from("seller_reviews")
+                .select {
+                    filter { eq("seller_id", userId) }
+                }
+                .decodeList<Review>().size
+
+
+        } catch (e: Exception) {
+            // Логируем ошибку и возвращаем пустой список
+            println("Ошибка при получении отзывов продавца: ${e.message}")
+         0
         }
     }
     fun getAdvertisementById(advertisementId: String) {
@@ -263,12 +338,14 @@ class AdvertisementViewModel : ViewModel() {
                         filter { eq("status", "active") }
                     }
                     .decodeSingle<Advertisement>()
+                Log.d("GET SELLER", advertisement.toString())
 
                 // Получаем дополнительные данные (пользователь, локация и т.д.)
                 val sellerInfo = getSellerInfo(advertisement.userId)
+                Log.d("GET SELLER", sellerInfo.name)
                 val locationInfo = getLocationInfo(advertisement.villageId, advertisement.regionId)
                 val images = getAdvertisementImages(advertisementId)
-
+                Log.d("IMAGE",advertisement.imageUrl.toString())
                 // Преобразуем в UI состояние
                 val adState = AdvertisementState(
                     id = advertisement.id ?: "",
@@ -277,10 +354,9 @@ class AdvertisementViewModel : ViewModel() {
                     price = advertisement.price?.toInt() ?: 0,
                     area = advertisement.area?.toInt() ?: 0,
                     location = locationInfo,
-                    coordinates = null, // Можно получить из таблицы locations
-                    imageUrls = images,
+                    imageUrls = images, // Можно получить из таблицы locations
                     isFavorite = checkIfFavorite(advertisementId),
-                    datePosted =advertisement.createdAt.toString(),
+                    datePosted = formatDate(advertisement.createdAt),
                     sellerName = sellerInfo.name,
                     sellerRating = sellerInfo.rating,
                     sellerReviewsCount = sellerInfo.reviewsCount,
@@ -299,7 +375,12 @@ class AdvertisementViewModel : ViewModel() {
                     viewsCount = advertisement.viewsCount ?: 0,
                     phoneNumber = advertisement.contactPhone ?: "",
                     features = extractFeatures(advertisement),
-                    additionalInfo = buildAdditionalInfo(advertisement)
+                    additionalInfo = buildAdditionalInfo(advertisement),
+                    imageUrl = advertisement.imageUrl,
+                    reviews = getSellerReviewsInfo(userId = advertisement.userId),
+                    sellerImage = sellerInfo.image,
+                    center_latitude = advertisement.center_latitude,
+                    center_longitude = advertisement.center_longitude
                 )
 
                 _advertisementState.value = adState
@@ -353,7 +434,7 @@ class AdvertisementViewModel : ViewModel() {
                 Log.d("UPDATE", "Ad ID: $advertisementId")
 
 
-                _advertisementState.value = currentState.copy(viewsCount = newViewsCount)
+                _advertisementState.value = currentState.copy(viewsCount = newViewsCount,)
 
             } catch (e: Exception) {
                 Log.e("UPDATE", e.message ?: "Unknown error", e)
@@ -364,16 +445,23 @@ class AdvertisementViewModel : ViewModel() {
     }
 
 
-    /* private fun formatDate(dateString: String?): String {
-         return try {
-             dateString?.let {
-                 val dateTime = LocalDateTime.parse(it, isoFormatter)
-                 dateTime.format(dateFormatter)
-             } ?: ""
-         } catch (e: Exception) {
-             ""
-         }
-     }*/
+    private fun formatDate(
+        dateString: String?,
+        targetZoneId: ZoneId = ZoneId.systemDefault()
+    ): String {
+        return try {
+            dateString?.let {
+                val dateTime = OffsetDateTime.parse(it, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                val localDateTime = dateTime.atZoneSameInstant(targetZoneId).toLocalDateTime()
+
+                localDateTime.format(DateTimeFormatter
+                    .ofPattern("dd.MM.yyyy HH:mm:ss")
+                    .withLocale(Locale("ru")))
+            } ?: ""
+        } catch (e: Exception) {
+            ""
+        }
+    }
 
     private fun extractFeatures(advertisement: Advertisement): List<String> {
         val features = mutableListOf<String>()
@@ -433,17 +521,21 @@ data class SellerInfo(
     val name: String = "",
     val rating: Float = 0f,
     val reviewsCount: Int = 0,
-    val since: String = ""
+    val since: String = "",
+    val reviews:List<Review>? = emptyList<Review>(),
+    val image: String? = ""
 )
 
 // Model для базы данных
 @kotlinx.serialization.Serializable
 data class Advertisement(
     val id: String? = null,
+    @SerialName("user_id")
     val userId: String? = null,
     val title: String? = null,
     val slug: String? = null,
     val description: String? = null,
+    @SerialName("category_id")
     val categoryId: String? = null,
     val villageId: String? = null,
     val regionId: String? = null,
@@ -471,7 +563,11 @@ data class Advertisement(
     val createdAt: String? = null,
     val updatedAt: String? = null,
     val publishedAt: String? = null,
-    val expiresAt: String? = null
+    val expiresAt: String? = null,
+    @SerialName("image_url")
+    val imageUrl: String? = null,
+    val center_latitude: Double? = null,
+    val center_longitude: Double? =null,
 )
 
 // UI States
@@ -481,7 +577,17 @@ data class AdvertisementListState(
     val error: String? = null,
     val hasMore: Boolean = true
 )
+@Serializable
+@SerialName("advertisement_images")
+data class AdvertisementImages(
+    val id: String,
+    @SerialName("created_at")
+    val createAt: String,
+    @SerialName("id_ad")
+    val idAd: String,
+    val url: String,
 
+)
 
 
 data class AdvertisementState(
@@ -513,7 +619,12 @@ data class AdvertisementState(
     var viewsCount: Int = 0,
     val phoneNumber: String = "",
     val features: List<String> = emptyList(), // особенности
-    val additionalInfo: String = ""
+    val additionalInfo: String = "",
+    val imageUrl: String? = null,
+    val reviews: List<ReviewState>? = emptyList(),
+    val sellerImage: String? = "",
+    val center_latitude: Double? =null,
+    val center_longitude: Double? =null,
 )
 
 @Serializable
@@ -535,11 +646,17 @@ data class CoordinatesState(
 // Модель для отзывов
 data class ReviewState(
     val id: String,
-    val authorName: String,
+    val reviewer_id: String,
+    val seller_id: String,
+    val advertisement_id: String,
     val rating: Float,
-    val date: String,
-    val text: String,
-    val helpful: Int = 0
+    val title: String,
+    val comment: String,
+    val helpful_count: Int = 0,
+    val is_verified_purchase: Boolean,
+    val username: String,
+    val createdAt: String,
+    val image: String? = ""
 )
 
 // Модель для похожих объявлений

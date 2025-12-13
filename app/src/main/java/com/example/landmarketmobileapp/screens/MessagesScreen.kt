@@ -278,6 +278,7 @@ fun ChatItem(
                             .data(chat.participantAvatar)
                             .crossfade(true)
                             .build(),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                         contentDescription = chat.participantName,
                         modifier = Modifier
                             .size(56.dp)
@@ -866,7 +867,7 @@ fun ChatTopBar(
                     ) {
                         Icon(
                             Icons.Default.Person,
-                            contentDescription = chat.id,
+                            contentDescription = chat.participantName,
                             tint = Color.White,
                             modifier = Modifier
                                 .size(20.dp)
@@ -880,7 +881,7 @@ fun ChatTopBar(
 
                 Column {
                     Text(
-                        text = chat.id,
+                        text = chat.participantName,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily(Font(R.font.montserrat_bold))

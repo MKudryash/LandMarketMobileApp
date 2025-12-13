@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.protobuf.Internal
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -34,6 +35,9 @@ import com.example.landmarketmobileapp.components.SearchBarWithSettings
 import com.example.landmarketmobileapp.viewModels.AdvertisementState
 import com.example.landmarketmobileapp.viewModels.AdvertisementViewModel
 import kotlinx.coroutines.delay
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 import java.text.NumberFormat
 import java.util.*
 
@@ -45,14 +49,21 @@ data class Coordinates(
     val longitude: Double
 )
 
-// Модель для отзывов
+@Serializable
+@SerialName("seller_reviews")
 data class Review(
     val id: String,
-    val authorName: String,
+    val reviewer_id: String,
+    val seller_id: String,
+    val advertisement_id: String,
     val rating: Float,
-    val date: String,
-    val text: String,
-    val helpful: Int = 0
+    val title: String,
+    val comment: String,
+    val helpful_count: Int = 0,
+    val is_verified_purchase: Boolean,
+    val is_approved: Boolean,
+    val created_at: String,
+    val updated_at: String?,
 )
 
 // Модель для похожих объявлений
@@ -618,14 +629,28 @@ fun AdvertisementCard(
                             modifier = Modifier
                                 .size(24.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFF6AA26C))
+                                .background(Color(0xFF6AA26C)),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                Icons.Default.Person,
-                                contentDescription = "Продавец",
-                                tint = Color.White,
-                                modifier = Modifier.size(14.dp)
-                            )
+                            if(advertisement.sellerImage=="") {
+                                Icon(
+                                    Icons.Default.Person,
+                                    contentDescription = "Продавец",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                            else {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(advertisement.sellerImage!!)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = "Изображение",
+                                    modifier = Modifier.size(120.dp),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))

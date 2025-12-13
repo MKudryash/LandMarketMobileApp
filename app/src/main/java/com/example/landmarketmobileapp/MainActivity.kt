@@ -19,6 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.landmarketmobileapp.navigation.MainAppScaffold
 import com.example.landmarketmobileapp.ui.theme.LandMarketMobileAppTheme
 import com.example.landmarketmobileapp.viewModels.AuthViewModel
+import com.yandex.mapkit.MapKitFactory
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -26,6 +27,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            MapKitFactory.setApiKey("25fac3a0-fc49-4545-92b1-d1d64d54dac5")
+            MapKitFactory.initialize(this)
             LandMarketMobileAppTheme {
                 val navController = rememberNavController()
 

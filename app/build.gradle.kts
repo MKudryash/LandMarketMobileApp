@@ -77,4 +77,7 @@ dependencies {
 
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
+    implementation("ru.sulgik.mapkit:yandex-mapkit-kmp-compose:0.1.1")
+
+    implementation("com.google.accompanist:accompanist-permissions:0.28.0")
 }
