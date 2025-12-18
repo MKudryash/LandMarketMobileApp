@@ -1,5 +1,6 @@
 package com.example.landmarketmobileapp.screens
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -50,7 +51,7 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessagesScreen(
-    onNavigationChat: (String) -> Unit,
+    onNavigationChat: (String, String) -> Unit,
     viewModel: ChatViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableStateOf(0) }
@@ -164,7 +165,7 @@ fun MessagesScreen(
             when (selectedTab) {
                 0 -> ChatsList(
                     chatState = chatState,
-                    onChatClick = { chatId -> onNavigationChat(chatId) },
+                    onChatClick = { chatId , userId-> onNavigationChat(chatId,userId) },
                     onRefresh = { viewModel.loadChats() }
                 )
 
@@ -180,7 +181,7 @@ fun MessagesScreen(
 @Composable
 fun ChatsList(
     chatState: com.example.landmarketmobileapp.viewModels.ChatListState,
-    onChatClick: (String) -> Unit,
+    onChatClick: (String, String) -> Unit,
     onRefresh: () -> Unit
 ) {
     when {
@@ -242,9 +243,10 @@ fun ChatsList(
                 verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 items(chatState.chats) { chat ->
+                    Log.d("CHAT MESSAGE", chat.otherUserId)
                     ChatItem(
                         chat = chat,
-                        onClick = { onChatClick(chat.id) }
+                        onClick = { onChatClick(chat.id,chat.otherUserId) }
                     )
                 }
             }
@@ -759,6 +761,7 @@ fun MessageInputField(
 fun ChatScreen(
     navigateToBack: () -> Unit,
     chatId: String,
+    otherId: String,
     viewModel: ChatViewModel = viewModel()
 ) {
     var messageText by remember { mutableStateOf("") }
@@ -767,10 +770,11 @@ fun ChatScreen(
     val focusRequester = remember { FocusRequester() }
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-
+    Log.d("CHAT SCREEN", otherId,)
+    Log.d("CHAT SCREEN", chatId,)
     // Загружаем сообщения при открытии экрана
     LaunchedEffect(chatId) {
-        viewModel.loadMessages(chatId)
+        viewModel.loadMessages(chatId,otherId)
     }
 
     // Прокручиваем к последнему сообщению при загрузке
@@ -804,7 +808,7 @@ fun ChatScreen(
                 chat = messagesState.let { state ->
                     ChatUI(
                         id = chatId,
-                        participantName = "Загрузка...",
+                        participantName = state?.user?: "Пользователь" ,
                         lastMessage = "",
                         lastMessageTime = "",
                         unreadCount = 0,

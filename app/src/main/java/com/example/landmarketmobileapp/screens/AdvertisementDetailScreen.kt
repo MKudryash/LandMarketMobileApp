@@ -2,6 +2,10 @@ package com.example.landmarketmobileapp.screens
 
 import ReviewItem
 import android.Manifest
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.util.Log
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -43,11 +47,16 @@ import com.google.accompanist.permissions.PermissionStatus
 import com.google.accompanist.permissions.rememberPermissionState
 import com.yandex.mapkit.map.CameraPosition
 import kotlinx.coroutines.launch
+import ru.sulgik.mapkit.compose.Placemark
 import ru.sulgik.mapkit.compose.YandexMap
 import ru.sulgik.mapkit.compose.bindToLifecycleOwner
+import ru.sulgik.mapkit.compose.imageProvider
 import ru.sulgik.mapkit.compose.rememberAndInitializeMapKit
 import ru.sulgik.mapkit.compose.rememberCameraPositionState
+import ru.sulgik.mapkit.compose.rememberPlacemarkState
 import ru.sulgik.mapkit.geometry.Point
+import ru.sulgik.mapkit.map.ImageProvider
+import ru.sulgik.mapkit.map.fromBitmap
 import java.text.NumberFormat
 import java.util.*
 
@@ -1464,8 +1473,7 @@ fun MapDialog(
                         .fillMaxSize()
                         .weight(1f)
                 ) {
-                    Log.d("COOR","${center_longitude}, ${center_latitude
-                    }")
+                    Log.d("COOR","${center_longitude}, ${center_latitude}")
                     if (true) {
                         if (hasLocationPermission) {
                             val startPosition = ru.sulgik.mapkit.map.CameraPosition(
@@ -1483,121 +1491,44 @@ fun MapDialog(
                                 YandexMap(
                                     cameraPositionState = cameraPositionState,
                                     modifier = Modifier.fillMaxSize()
-                                )
+                                ){
+                                    val placemarkGeometry = Point(center_latitude, center_longitude)
 
-                                // Затемнение и текст поверх карты для кликабельности
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color.Black.copy(alpha = 0.2f))
-                                )
+                                    // Создаем простой Bitmap программно
+                                    val bitmap = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888).apply {
+                                        // Прозрачный фон
+                                        eraseColor(android.graphics.Color.TRANSPARENT)
 
-                                Column(
-                                    modifier = Modifier.align(Alignment.Center),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Icon(
-                                        Icons.Default.KeyboardArrowUp,
-                                        contentDescription = "Увеличить",
-                                        tint = Color.White,
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .background(
-                                                Color(0xFF6AA26C),
-                                                CircleShape
-                                            )
-                                            .padding(12.dp)
-                                    )
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-
-                                }
-                            }
-                            // Кнопки управления на карте
-                            Column(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(8.dp)
-                            ) {
-                                // Кнопка "Мое местоположение"
-                                if (fineLocationPermissionState.status == PermissionStatus.Granted) {
-                                    Card(
-                                        modifier = Modifier.size(40.dp),
-                                        shape = CircleShape,
-                                        elevation = CardDefaults.cardElevation(4.dp)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(Color.White)
-                                                .clickable {
-                                                    // Переход к текущему местоположению
-                                                },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                Icons.Default.LocationOn,
-                                                contentDescription = "Мое местоположение",
-                                                tint = Color(0xFF6AA26C),
-                                                modifier = Modifier.size(20.dp)
-                                            )
+                                        val canvas = Canvas(this)
+                                        val paint = Paint().apply {
+                                            color = android.graphics.Color.RED
+                                            style = Paint.Style.FILL
+                                            isAntiAlias = true
                                         }
+
+                                        // Рисуем булавку локации
+                                        canvas.drawCircle(32f, 20f, 10f, paint)  // верхний круг
+
+                                        // Нижний треугольник (заостренный)
+                                        val path = android.graphics.Path()
+                                        path.moveTo(22f, 20f)
+                                        path.lineTo(32f, 55f)
+                                        path.lineTo(42f, 20f)
+                                        path.close()
+                                        canvas.drawPath(path, paint)
                                     }
 
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                }
+                                    val imageProvider = ImageProvider.fromBitmap(bitmap)
 
-                                // Кнопка увеличения
-                                Card(
-                                    modifier = Modifier.size(40.dp),
-                                    shape = RoundedCornerShape(8.dp),
-                                    elevation = CardDefaults.cardElevation(4.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(Color.White)
-                                            .clickable {
-                                                // Увеличение масштаба
-                                            },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Add,
-                                            contentDescription = "Увеличить",
-                                            tint = Color(0xFF6AA26C),
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                // Кнопка уменьшения
-                                Card(
-                                    modifier = Modifier.size(40.dp),
-                                    shape = RoundedCornerShape(8.dp),
-                                    elevation = CardDefaults.cardElevation(4.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(Color.White)
-                                            .clickable {
-                                                // Уменьшение масштаба
-                                            },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Delete,
-                                            contentDescription = "Уменьшить",
-                                            tint = Color(0xFF6AA26C),
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
+                                    Placemark(
+                                        state = rememberPlacemarkState(placemarkGeometry),
+                                        icon = imageProvider,
+                                    )
                                 }
                             }
+
+
+
                         } else {
                             // Без разрешений - показываем статичную карту с кнопкой запроса
                             Box(

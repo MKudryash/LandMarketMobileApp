@@ -128,7 +128,13 @@ Log.d("MY ID", userId)
                     emptyList()
                 }
 
+
+
                 val advertisementMap = advertisements.associateBy { it.id }
+
+
+
+
 
                 // Преобразуем в UI состояние
                 val chatUIs = chats.map { chat ->
@@ -137,12 +143,18 @@ Log.d("MY ID", userId)
                     val otherUser = userMap[otherUserId]
                     val unreadCount = if (isUser1) chat.user1UnreadCount else chat.user2UnreadCount
                     val advertisement = chat.advertisementId?.let { advertisementMap[it] }
-
+                    val message = supabase.postgrest
+                        .from("messages")
+                        .select {
+                            filter { eq("id", chat.lastMessage!!) }
+                            /*   order"created_at", ascending = true)*/
+                        }
+                        .decodeSingle<ChatMessage>()
                     ChatUI(
                         id = chat.id,
                         participantName = otherUser?.fullName ?: "Пользователь",
                         participantAvatar = otherUser?.image,
-                        lastMessage = chat.lastMessage ?: "",
+                        lastMessage = message.message,
                         lastMessageTime = formatMessageTime(chat.lastMessageTime),
                         unreadCount = unreadCount ?: 0,
                         isOnline = false, // Здесь нужно получить статус из presence
@@ -174,13 +186,15 @@ Log.d("MY ID", userId)
     /**
      * Загрузка сообщений в чате
      */
-    fun loadMessages(chatId: String) {
+    fun loadMessages(chatId: String, otherUserId: String) {
         val userId = currentUserId ?: return
+        Log.d("loadMessages", "Chat ID: $chatId")
+        Log.d("loadMessages", "Other User ID: $otherUserId")
 
         _messagesState.value = MessagesState(
             chatId = chatId,
             isLoading = true,
-            messages = emptyList()
+            messages = emptyList(),
         )
 
         viewModelScope.launch {
@@ -190,7 +204,6 @@ Log.d("MY ID", userId)
                     .from("messages")
                     .select {
                         filter { eq("chat_id", chatId) }
-                     /*   order"created_at", ascending = true)*/
                     }
                     .decodeList<ChatMessage>()
 
@@ -205,18 +218,25 @@ Log.d("MY ID", userId)
                         type = message.type
                     )
                 }
-                Log.d("COME","sdf")
-                // Помечаем сообщения как прочитанные
 
+                Log.d("ChatViewModel", "Loaded ${messages.size} messages")
 
+                // Получаем информацию о собеседнике
+                val userInfo = getSellerInfo(otherUserId)
+                Log.d("ChatViewModel", "User info: $userInfo")
+
+                // Обновляем состояние
                 _messagesState.value = MessagesState(
                     chatId = chatId,
                     isLoading = false,
                     messages = messageUIs,
-                    error = null
+                    error = null,
+                    user = userInfo // Сохраняем имя пользователя
                 )
 
+                // Помечаем сообщения как прочитанные
                 markMessagesAsRead(chatId)
+
             } catch (e: Exception) {
                 Log.e("ChatViewModel", "Error loading messages", e)
                 _messagesState.value = _messagesState.value?.copy(
@@ -350,7 +370,22 @@ Log.d("MY ID", userId)
             }
         }
     }
+    private suspend fun getSellerInfo(userId: String?): String {
+        if (userId == null) return ""
 
+        return try {
+            val user = supabase.postgrest
+                .from("users")
+                .select {
+                    filter { eq("id", userId) }
+                }
+                .decodeSingle<Profile>()
+            user.fullName
+        } catch (e: Exception) {
+            SellerInfo()
+            ""
+        }
+    }
     /**
      * Создание нового чата
      */
@@ -658,7 +693,8 @@ data class MessagesState(
     val chatId: String,
     val messages: List<MessageUI> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val user: String? = "Пользователь"
 )
 
 data class NotificationsState(

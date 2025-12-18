@@ -21,9 +21,9 @@ sealed class Screen(val route: String, val screenType: ScreenType) {
             return "advertisementdetail/${id}"
         }
     }
-    object Chat : Screen("chat/{id}", ScreenType.WithBottomNav){
-        fun createRoute(id: String): String {
-            return "chat/${id}"
+    object Chat : Screen("chat/{idChat}?userId={idUser}", ScreenType.WithBottomNav){
+        fun createRoute(idChat: String,idUser:String): String {
+            return "chat/$idChat?userId=$idUser"
         }
     }
     object Region : Screen("region/{id}", ScreenType.WithBottomNav){

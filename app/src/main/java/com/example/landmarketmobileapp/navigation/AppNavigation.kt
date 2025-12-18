@@ -67,7 +67,7 @@ fun AppNavigation(navController: NavHostController) {
         }
         composable(Screen.Messages.route) {
             MessagesScreen(
-                onNavigationChat = {it->navController.navigate(Screen.Chat.createRoute(it))}
+                onNavigationChat = {it,it2->navController.navigate(Screen.Chat.createRoute(it,it2))}
             )
         }
         composable(Screen.Ads.route) {
@@ -91,16 +91,19 @@ fun AppNavigation(navController: NavHostController) {
 
         composable(
             Screen.Chat.route,
-            arguments = listOf(navArgument("id") { type = NavType.StringType })
+            arguments = listOf(navArgument("idChat") { type = NavType.StringType }, navArgument("idUser") { type = NavType.StringType })
         ) { backStackEntry ->
-            val id = backStackEntry.arguments?.getString("id") ?: ""
+            val idChat = backStackEntry.arguments?.getString("idChat") ?: ""
+            val idUser = backStackEntry.arguments?.getString("idUser") ?: ""
             ChatScreen(
                 {
                     navController.navigate(Screen.Messages.route) {
                         popUpTo(0)
                     }
                 },
-                id
+                idChat,
+                idUser
+
             )
         }
 
