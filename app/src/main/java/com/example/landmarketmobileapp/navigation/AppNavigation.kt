@@ -13,9 +13,7 @@ import com.example.landmarketmobileapp.screens.ChatScreen
 import com.example.landmarketmobileapp.screens.MainScreen
 import com.example.landmarketmobileapp.screens.MessagesScreen
 import com.example.landmarketmobileapp.screens.ProfileScreen
-import com.example.landmarketmobileapp.screens.RegionScreen
 import com.example.landmarketmobileapp.screens.SignUpScreen
-import com.example.landmarketmobileapp.screens.VillageScreen
 
 @Composable
 fun AppNavigation(navController: NavHostController) {
@@ -81,13 +79,7 @@ fun AppNavigation(navController: NavHostController) {
                 }
             )
         }
-        composable(
-            Screen.Region.route,
-            arguments = listOf(navArgument("id") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val id = backStackEntry.arguments?.getString("id") ?: ""
-            RegionScreen(id)
-        }
+
 
         composable(
             Screen.Chat.route,
@@ -118,10 +110,6 @@ fun AppNavigation(navController: NavHostController) {
 
         }
 
-        composable(Screen.Village.route,
-            arguments = listOf(navArgument("id") { type = NavType.StringType })) { backStackEntry ->
-                val id = backStackEntry.arguments?.getString("id") ?: ""
-            VillageScreen(id)
-        }
+
     }
 }

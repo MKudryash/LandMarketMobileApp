@@ -1,6 +1,5 @@
 package com.example.landmarketmobileapp.screens
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,7 +30,6 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -48,7 +46,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
@@ -58,11 +55,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.landmarketmobileapp.R
+import com.example.landmarketmobileapp.components.ChangePasswordDialog
+import com.example.landmarketmobileapp.components.ProfileField
 import com.example.landmarketmobileapp.viewModels.AuthViewModel
 import com.example.landmarketmobileapp.viewModels.ProfileViewModel
 
@@ -354,162 +352,10 @@ fun ProfileScreen(
         ChangePasswordDialog(
             onDismiss = { showChangePasswordDialog = false },
             onChangePassword = { oldPass, newPass ->
-              viewModel.requestPasswordReset()
+                viewModel.requestPasswordReset()
                 showChangePasswordDialog = false
             }
         )
-    }
-}
-
-@Composable
-fun ProfileField(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    value: String,
-    isEditing: Boolean,
-    onValueChange: (String) -> Unit,
-    keyboardType: KeyboardType
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Icon(
-            icon,
-            contentDescription = label,
-            tint = Color(0xFF6AA26C),
-            modifier = Modifier.size(24.dp)
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = label,
-                fontSize = 12.sp,
-                color = Color.Gray,
-                fontFamily = FontFamily(Font(R.font.montserrat_regular))
-            )
-
-            if (isEditing) {
-                AuthTextField(
-                    value = value,
-                    onValueChange = onValueChange,
-                    label = "",
-                    keyboardType = keyboardType,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            } else {
-                Text(
-                    text = value,
-                    fontSize = 16.sp,
-                    fontFamily = FontFamily(Font(R.font.montserrat_regular)),
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun ChangePasswordDialog(
-    onDismiss: () -> Unit,
-    onChangePassword: (oldPassword: String, newPassword: String) -> Unit
-) {
-    var oldPassword by remember { mutableStateOf("") }
-    var newPassword by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-
-    val passwordsMatch = newPassword == confirmPassword && newPassword.isNotEmpty()
-    val isValid = oldPassword.isNotEmpty() && newPassword.isNotEmpty() && passwordsMatch
-
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text(
-                    text = "Смена пароля",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily(Font(R.font.montserrat_bold)),
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                // Старый пароль
-                AuthTextField(
-                    value = oldPassword,
-                    onValueChange = { oldPassword = it },
-                    label = "Текущий пароль",
-                    keyboardType = KeyboardType.Password,
-                    isPassword = true,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-
-                // Новый пароль
-                AuthTextField(
-                    value = newPassword,
-                    onValueChange = { newPassword = it },
-                    label = "Новый пароль",
-                    keyboardType = KeyboardType.Password,
-                    isPassword = true,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-
-                // Подтверждение пароля
-                AuthTextField(
-                    value = confirmPassword,
-                    onValueChange = { confirmPassword = it },
-                    label = "Подтвердите пароль",
-                    keyboardType = KeyboardType.Password,
-                    isPassword = true,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                if (newPassword.isNotEmpty() && confirmPassword.isNotEmpty() && !passwordsMatch) {
-                    Text(
-                        text = "Пароли не совпадают",
-                        color = Color.Red,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    TextButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Отмена")
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Button(
-                        onClick = {
-                            if (isValid) {
-                                onChangePassword(oldPassword, newPassword)
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        enabled = isValid,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF6AA26C)
-                        )
-                    ) {
-                        Text("Сменить")
-                    }
-                }
-            }
-        }
     }
 }
 

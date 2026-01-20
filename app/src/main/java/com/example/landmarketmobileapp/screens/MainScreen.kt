@@ -11,52 +11,38 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.landmarketmobileapp.R
 import com.example.landmarketmobileapp.components.CardRegion
 import com.example.landmarketmobileapp.components.CardVillage
+import com.example.landmarketmobileapp.components.ItemAboutUs
 import com.example.landmarketmobileapp.components.MainHeader
-import com.example.landmarketmobileapp.components.SearchBarWithSettings
 import com.example.landmarketmobileapp.components.SecondHeader
 import com.example.landmarketmobileapp.components.SecondMainHeader
 import com.example.landmarketmobileapp.components.ThirdHeader
 import com.example.landmarketmobileapp.viewModels.MainViewModel
-import okhttp3.internal.http2.Header
-import java.text.NumberFormat
-import java.util.Locale
 import kotlin.collections.chunked
 
 
@@ -247,87 +233,6 @@ fun MainScreen(
         }
     }
 }
-
-@Composable
-fun ItemAboutUs(
-    number: Int,
-    text: String,
-) {
-    val formatter = NumberFormat.getNumberInstance(Locale.getDefault())
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(vertical = 4.dp)
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.more),
-            tint = Color(0xFF6AA26C),
-            contentDescription = null,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(Modifier.width(8.dp))
-        Column {
-            Text(
-                formatter.format(number),
-                color = Color(0xFF6AA26C),
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp,
-                fontFamily = FontFamily(Font(R.font.montserrat_bold))
-            )
-            Text(
-                text,
-                color = Color.Black,
-                fontWeight = FontWeight.Normal,
-                fontSize = 14.sp,
-                fontFamily = FontFamily(Font(R.font.montserrat_regular))
-            )
-        }
-    }
-}
-
-@Composable
-fun ErrorScreen(
-    error: String,
-    onRetry: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFD9D9D9))
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = error,
-                color = Color.Red,
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center
-            )
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Button(
-                    onClick = onRetry,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF6AA26C)
-                    )
-                ) {
-                    Text("Повторить")
-                }
-
-                TextButton(onClick = onDismiss) {
-                    Text("Закрыть")
-                }
-            }
-        }
-    }
-}
-
 
 
 @Composable

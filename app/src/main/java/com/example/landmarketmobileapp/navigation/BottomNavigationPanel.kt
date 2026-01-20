@@ -3,7 +3,6 @@ package com.example.landmarketmobileapp.navigation
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -137,13 +136,6 @@ fun NavigationItem(
     }
 }
 
-sealed class NavItem(val title: String, val route: String) {
-    object Home : NavItem("Главная", Screen.Main.route)
-    object Ads : NavItem("Объявления", Screen.Ads.route)
-    object Messages : NavItem("Сообщения", Screen.Messages.route)
-    object Profile : NavItem("Профиль", Screen.Profile.route)
-}
-
 @Preview
 @Composable
 fun MainScreenWithBottomNav() {
@@ -192,10 +184,3 @@ fun BottomNavigationPreview() {
 
     }
 }
-
-/*
-@Preview
-@Composable
-fun MainScreenPreview() {
-    MainScreenWithBottomNav()
-}*/
