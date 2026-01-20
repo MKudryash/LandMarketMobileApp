@@ -1,7 +1,6 @@
 package com.example.landmarketmobileapp.models
 
 
-import com.example.landmarketmobileapp.viewModels.Advertisement
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

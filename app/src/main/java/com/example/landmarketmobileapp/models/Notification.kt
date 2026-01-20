@@ -1,5 +1,6 @@
 package com.example.landmarketmobileapp.models
 
+import com.example.landmarketmobileapp.models.type.NotificationType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
